@@ -7,104 +7,100 @@ import random
 class recipe(object):
 	def __init__(self, title_or_ingredient, exclusions):
 		url = "https://api.edamam.com/search"
-		querystring = {"q":title_or_ingredient,"excluded":exclusions,"to":"3","app_id":"5003bb48","app_key":"e764f6502abe3c306441bbe5adc5649f"}
+		r_from = str(random.randrange(10))
+		r_to = str(int(r_from)+1)
+		querystring = {"q":title_or_ingredient,"excluded":exclusions,"from":r_from, "to":r_to,"app_id":"5003bb48","app_key":"e764f6502abe3c306441bbe5adc5649f"}
 		self.response = requests.request("GET", url, params=querystring)
 
-	def get_titles(self):
+	def get_url(self):
 		result_dict = json.loads(self.response.text)
 		for hit in result_dict["hits"]:
-			print()
-			print(hit['recipe']["label"], hit['recipe']['url'])
+			return (hit['recipe']['url'])
+
+	def get_label(self):
+		# get ingredients of first hit
+		result_dict = json.loads(self.response.text)
+		first_hit = result_dict["hits"][0]
+		label = first_hit['recipe']['label']
+		if 'recipe' in label:
+			label.replace('recipe','')
+		return label
+
 		
 def find_food(set):
 	if set.is_food_hol:
-		code = set.food_hol_code
-		hol = code_to_hol(code)
+		hol_code = set.food_hol_code
+		return generate_food_hol(hol_code)
 
-		if code == 1:
-			print("Happy Cinco de Mayo!")
-			return "tacos", None
+	e_code = set.emotion
+	h_code = set.harsh
 
-	code = set.emotion
+	return generate_food(e_code,h_code)
 
-	if set.is_harsh:
-		temp = set.temp_tuple[0]
-		hot = True if temp > 70 else False
+def generate_food_hol(hol_code):
+	if hol_code == 1:
+		print("Happy Cinco de Mayo!")
+		return "tacos", None
 
-		if code == 0 or code == 1:
-			# Neutral or happy
-			if hot:
-				print("Have an ice cream!")
-				return "ice cream", None
-			else:
-				print("Have a nice bowl of warm soup!")
-				return "soup", None
+	# add additional holidays here!
+	return None
 
-		elif code == 2:
-			# Sad
-			print("Some comfort food that will boost your mood!")
-			if hot:
-				# the omega-3 oils found in fish are linked to lower levels of depression
-				return "fish", None
-			else:
-				# fermented food, such as kimchi
-				# supports healthy gut functions resulting in better serotonin production => better mood
-				# salmon not only has omega-3 oils but also rich in vitamin D, crucial in mood maintaining
-				# return "salmon", None
-				return "kimchi stew", None
-
-		elif code == 3:
-			# Worried
-			print("Cast your worries aside with a delectable snack!")
-			i = random.randrange(3)
-			if hot:
-				# nuts/seeds support brain function and reduce risk of depression
-				# great snack for the worried
-				random_snack = ['seeds','oats','nuts']
-				return random_snack[i], None
-			else:
-				# quick easy warm snack for a grab-and-go
-				random_snack = ['toast','bread','sandwich']
-				return random_snack[i], None
+def generate_food(e_code,h_code):
+	if e_code == 1:
+		# happy
+		if h_code == 1:
+			# happy + hot
+			return "ice cream", None
+		elif h_code == 2:
+			# happy + cold
+			return "soup", None
 
 		else:
-			# Angry
-			print("Calm down with some of these foods, just avoid certain ingredients!")
-			random_food =['chicken','fish','beef','vegetables']
-			i = random.randrange(3)
-			return random_food[i], "coffee,tomatoes,chilli,wheat,milk"
-
-	else:
-		if code == 0 or code == 1:
-			# Neutral or Happy
-			print("Here are some ideas for food!")
+			#happy + normal
 			random_food =['chicken','fish','beef','vegetables']
 			i = random.randrange(4)
 			return random_food[i], None
 
-		elif code == 2:
-			# Sad
-			print("Some comfort food that will boost your mood!")
+	elif e_code == 2:
+		# sad
+		if h_code == 1:
+			# sad + hot
+			# the omega-3 oils found in fish are linked to lower levels of depression
+			# salmon not only has omega-3 oils but also rich in vitamin D, crucial in mood maintaining
+			return "salmon", None
+		elif h_code == 2:
+			# sad + cold
+			# fermented food, such as kimchi
+			# supports healthy gut functions resulting in better serotonin production => better mood
+			# warm food brings comfort during cold weather
+			return "kimchi stew", None
+		else:
+			# sad + normal
 			return "fish", None
 
-		elif code == 3:
-			# Worried
-			print("Cast your worries aside with a delectable snack!")
-			return "nuts", None
-		
+	elif e_code == 3:
+		# worried
+		i = random.randrange(3)
+		if h_code == 1:
+			# worried + hot
+			# nuts/seeds support brain function and reduce risk of depression
+			# great snack for the worried
+			random_snack = ['seeds','oats','nuts']
+			return random_snack[i], None
+		elif h_code == 2:
+			# worried + cold
+			# quick easy warm snack for a grab-and-go
+			random_snack = ['toast','bread','sandwich']
+			return random_snack[i], None
 		else:
-			# Angry
-			print("Calm down with some of these foods, just avoid certain ingredients!")
-			random_food =['chicken','fish','beef','vegetables']
-			i = random.randrange(4)
-			return random_food[i], "coffee,tomatoes,chilli,wheat,milk"
+			# worried + normal
+			return "nuts", None
 
-def code_to_hol(code):
-	switcher = {
-		1: "Cinco de Mayo"
-	}
-	hol = switcher.get(code)
-	return hol
+	else:
+		# Angry
+		random_food =['chicken','fish','beef','vegetables']
+		i = random.randrange(3)
+		return random_food[i], "coffee,tomatoes,chilli,wheat,milk"
 
 if __name__ == '__main__':
 	new = recipe("this")

@@ -6,6 +6,8 @@ from datetime import date, datetime
 from pytz import timezone
 import sys
 import holidays
+from nltk.corpus import wordnet as wn
+import random
 
 class setting():
 	def __init__(self):
@@ -31,7 +33,8 @@ class setting():
 			# get emotion from user
 			self.emotion = get_emo_code()
 		
-		self.is_harsh = harsh(self.temp_tuple, self.code)
+		# 0 for normal weather, 1 for hot weather, 2 for cold weather
+		self.harsh = get_harsh_code(self.temp_tuple, self.code)
 
 def get_food_holidays():
 	# used only cinco de mayo for this project
@@ -41,37 +44,76 @@ def get_food_holidays():
 	# can add additional holidays here
 	return food_holidays
 
-def harsh(temp_tuple, code):
-	# returns boolean
+def get_harsh_code(temp_tuple, code):
+	# returns int between 0-2
 	temp = temp_tuple[0]
-	if temp < 20 or temp > 104:
-		return True
-
 	weather = code.replace("_", " ").split()
-	if ("heavy" in weather) or ("freezing" in weather) or ("tstorm" in weather):
-		return True
+	
+	if temp > 104:
+		return 1
+	elif temp < 20 or ("heavy" in weather) or ("freezing" in weather) or ("tstorm" in weather):
+		return 2
+	else:
+		return 0
 
-	return False
-
-def describe(set):
-	describe_env(set)
+def describe(set, recipe):
+	describe_1(set)
 	if not set.is_food_hol:
-		describe_emo(set)
+		describe_2(set, recipe)
+	else:
+		describe_hol()
+	describe_3(recipe)
 
 # Describes environmental setting
-def describe_env(set):
-	print("It's a", set.warmth, set.weather, set.day, set.period)
+def describe_1(set):
+	print("On a", set.warmth, set.weather, set.day, set.period)
 	pass
 
 # Describes emotional setting
-def describe_emo(set):
-	str = emocode_to_str(set.emotion)
-	print("You are feeling", str)
+def describe_2(set, recipe):
+	e_code = set.emotion
+	str = emocode_to_str(e_code)
+	emo_noun = get_noun(str)
+	verb = random_synonym(e_code)
+
+	print("Have some", recipe.get_label(), "to", verb, "the", emo_noun)
 	pass
+
+def describe_3(recipe):
+	print("Recipe:", recipe.get_url())
+
+def describe_hol(recipe):
+	print("Have some", recipe.get_label(), "to celebrate!")
+
+def get_noun(word):
+	related_nouns = []
+
+	for lemma in wn.lemmas(wn.morphy(word, wn.ADJ), pos="a"):
+		for related_form in lemma.derivationally_related_forms():
+			for synset in wn.synsets(related_form.name(), pos=wn.NOUN):
+				for noun in synset.lemmas():
+					if noun.name() not in related_nouns:
+						related_nouns.append(noun.name())
+
+	if len(related_nouns) == 0:
+		for lemma in wn.lemmas(wn.morphy(word, wn.VERB), pos="v"):
+			for related_form in lemma.derivationally_related_forms():
+				for synset in wn.synsets(related_form.name(), pos=wn.NOUN):
+					for noun in synset.lemmas():
+						if noun.name() not in related_nouns:
+							related_nouns.append(noun.name())
+
+	return related_nouns[random.randrange(len(related_nouns))]
+
+def random_synonym(e_code):
+	if e_code == 1:
+		return get_synonym("celebrate")
+	else:
+		rand_syn = ["soothe","ease","relieve","alleviate"]
+		return get_synonym(rand_syn[random.randrange(len(rand_syn))])
 
 def emocode_to_str(code):
 	switcher = {
-		0: "neutral",
 		1: "happy",
 		2: "sad",
 		3: "worried",
@@ -87,23 +129,6 @@ def code_to_weather(code):
 	if "tstorm" in weather:
 		return "stormy"
 	return (" ".join(weather))
-
-# def describe_setting(weather):
-	
-# 	# switch_weather = {
-# 	# 	1: "clouds drift",
-# 	# 	2: "wind blows",
-# 	# 	3: "sun shines",
-# 	# 	4: "snow falls",
-# 	# 	5: "rain pours",
-# 	# }
-
-# 	# switch_sun = {
-# 	# 	1: "sun rises and the ",
-# 	# 	2: "sun begins to set and the ",
-# 	# }
-
-# 	# return "As the sun "
 
 def get_time(zone):
 	tz = timezone(zone)
@@ -163,16 +188,24 @@ def number_to_day(number):
 
 def get_emo_code():
 	print("Enter # of emotion:")
-	print('0. Neutral')
 	print('1. Happy')
 	print('2. Sad')
 	print('3. Worried')
 	print('4. Angry')
 	print()
 	emo_input = int(sys.stdin.readline().replace('\n', ''))
-	if not 0 <= emo_input <= 6:
+	if not 1 <= emo_input <= 4:
 		print("Unable to read input. Please try again.")
 		sys.exit()
 	print('-'*80)
 
 	return emo_input
+
+def get_synonym(word):
+	synonyms = []
+
+	for synset in wn.synsets(word):
+		for lemma in synset.lemmas():
+			synonyms.append(lemma.name())
+
+	return synonyms[random.randrange(len(synonyms))]
